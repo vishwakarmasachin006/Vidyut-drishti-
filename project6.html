@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vidyut-Drishti | Smart Electricity Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#10b981',
+                        brandDark: '#047857',
+                        ink: '#172033',
+                        solar: '#f59e0b',
+                        sky: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(16, 185, 129, 0.18), transparent 26%),
+                radial-gradient(circle at 82% 8%, rgba(37, 99, 235, 0.14), transparent 26%),
+                linear-gradient(135deg, #f8fafc 0%, #eefdf8 45%, #f6f8ff 100%);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.11);
+            backdrop-filter: blur(18px);
+        }
+
+        .animate-rise {
+            animation: riseIn 0.75s ease both;
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.55s ease both;
+        }
+
+        .animate-pop {
+            animation: popIn 0.65s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        .delay-1 { animation-delay: 0.08s; }
+        .delay-2 { animation-delay: 0.16s; }
+        .delay-3 { animation-delay: 0.24s; }
+
+        .pulse-ring {
+            position: relative;
+        }
+
+        .pulse-ring::after {
+            content: '';
+            position: absolute;
+            inset: -12px;
+            border: 2px solid rgba(16, 185, 129, 0.25);
+            border-radius: 999px;
+            animation: ringPulse 1.7s ease-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 3.5s ease-in-out infinite; }
+        .animate-float.delay-1 { animation-delay: 0.4s; }
+        .animate-float.delay-2 { animation-delay: 0.8s; }
+        .animate-float.delay-3 { animation-delay: 1.2s; }
+
+        .card-hover {
+            transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 22px 45px rgba(15, 23, 42, 0.14);
+        }
+
+        .meter-grid {
+            background-image:
+                linear-gradient(rgba(16, 185, 129, 0.11) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.11) 1px, transparent 1px);
+            background-size: 22px 22px;
+        }
+
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes ringPulse {
+            0% { opacity: 0.8; transform: scale(0.75); }
+            100% { opacity: 0; transform: scale(1.4); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="font-sans text-ink antialiased">
+    <nav class="sticky top-0 z-40 border-b border-white/70 bg-white/80 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-emerald-200">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight sm:text-2xl">Vidyut-<span class="text-brand">Drishti</span></h1>
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Smart Electricity Tracker</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="themeBtn" onclick="toggleTheme()" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-brand hover:text-brand" title="Change theme">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button id="logoutBtn" onclick="logoutApp()" class="hidden rounded-full bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main id="loginSection" class="mx-auto grid min-h-[calc(100vh-76px)] max-w-7xl items-center gap-8 px-4 py-10 lg:grid-cols-[1.08fr_0.92fr]">
+        <section class="animate-rise">
+            <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-bold text-brand shadow-sm">
+                <i class="fa-solid fa-shield-halved"></i>
+                OCR based electricity billing
+            </div>
+            <h2 class="max-w-3xl text-4xl font-black leading-tight text-ink sm:text-6xl">
+                Welcome to <span class="text-brand">Vidyut-Drishti</span>
+            </h2>
+            <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+                Upload meter photo, extract reading, calculate bill, and save every month in a clean energy dashboard.
+            </p>
+
+            <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                <div class="glass-panel card-hover rounded-2xl p-5 animate-float">
+                    <i class="fa-solid fa-camera text-2xl text-sky mb-2 block"></i>
+                    <p class="mt-3 text-sm font-bold text-slate-700">AI Photo OCR</p>
+                </div>
+                <div class="glass-panel card-hover rounded-2xl p-5 animate-float delay-1">
+                    <i class="fa-solid fa-calculator text-2xl text-brand mb-2 block"></i>
+                    <p class="mt-3 text-sm font-bold text-slate-700">Smart Auto Bill</p>
+                </div>
+                <div class="glass-panel card-hover rounded-2xl p-5 animate-float delay-2">
+                    <i class="fa-solid fa-chart-line text-2xl text-solar mb-2 block"></i>
+                    <p class="mt-3 text-sm font-bold text-slate-700">History Graph</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel animate-pop rounded-3xl p-6 sm:p-8">
+            <div class="mb-7 text-center">
+                <div class="pulse-ring mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand text-2xl text-white shadow-xl shadow-emerald-200">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h3 class="text-2xl font-black">Login or Create Profile</h3>
+                <p class="mt-2 text-sm text-slate-500">Your data is saved locally in this browser.</p>
+            </div>
+
+            <form class="grid gap-4" onsubmit="handleLogin(event)">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Full Name</span>
+                        <input id="userName" type="text" placeholder="e.g. Vishw" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-4 focus:ring-emerald-100" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Email</span>
+                        <input id="userEmail" type="email" placeholder="student@college.com" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-4 focus:ring-emerald-100" required>
+                    </label>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Phone</span>
+                        <input id="userPhone" type="tel" placeholder="9876543210" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-4 focus:ring-emerald-100">
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Meter Number</span>
+                        <input id="meterNumber" type="text" placeholder="MTR-2026-01" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-4 focus:ring-emerald-100" required>
+                    </label>
+                </div>
+
+                <label class="block">
+                    <span class="mb-2 block text-sm font-bold text-slate-700">Address</span>
+                    <input id="userAddress" type="text" placeholder="House, city, state" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-4 focus:ring-emerald-100">
+                </label>
+
+                <label class="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                    <input id="rememberUser" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand">
+                    Remember my profile
+                </label>
+
+                <button type="submit" class="mt-2 rounded-xl bg-brand px-5 py-3 font-black text-white shadow-xl shadow-emerald-200 transition hover:bg-brandDark hover:-translate-y-0.5">
+                    <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Enter Dashboard
+                </button>
+            </form>
+        </section>
+    </main>
+
+    <main id="mainAppSection" class="mx-auto hidden max-w-7xl px-4 py-8">
+        <section class="meter-grid animate-rise overflow-hidden rounded-3xl bg-ink p-6 text-white shadow-2xl md:p-8 relative">
+            <div class="absolute -right-32 -top-32 h-72 w-72 rounded-full bg-brand/30 blur-[80px]"></div>
+            <div class="absolute -bottom-32 -left-32 h-72 w-72 rounded-full bg-sky/20 blur-[80px]"></div>
+            
+            <div class="relative grid items-center gap-8 lg:grid-cols-[1fr_360px]">
+                <div class="z-10">
+                    <p class="mb-3 text-sm font-black uppercase tracking-[0.28em] text-emerald-200">Welcome to Vidyut-Drishti</p>
+                    <h2 class="text-3xl font-black leading-tight sm:text-5xl">
+                        Hello, <span id="displayUserName" class="text-emerald-300">User</span>
+                    </h2>
+                    <p class="mt-4 max-w-2xl text-slate-200">
+                        Upload your meter image, confirm the detected reading, and get an instant bill with history tracking.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur">
+                    <div class="mb-4 flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-200">Current Profile</span>
+                        <i class="fa-solid fa-user-check text-emerald-300"></i>
+                    </div>
+                    <div class="space-y-2 text-sm text-slate-200">
+                        <p><span class="font-bold text-white">Meter:</span> <span id="displayMeter">-</span></p>
+                        <p><span class="font-bold text-white">Email:</span> <span id="displayEmail">-</span></p>
+                        <p><span class="font-bold text-white">Phone:</span> <span id="displayPhone">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mt-8 grid gap-6 lg:grid-cols-[420px_1fr]">
+            <div id="inputSection" class="glass-panel animate-rise delay-1 rounded-3xl p-6">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-black">Meter Scan</h3>
+                    <p class="mt-1 text-sm text-slate-500">Clear photo gives better OCR result.</p>
+                </div>
+
+                <form id="meterForm" class="grid gap-5" onsubmit="handleFormSubmit(event)">
+                    <label for="meterImage" class="group flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/70 p-4 text-center transition hover:border-brand hover:bg-emerald-50">
+                        <div id="uploadPlaceholder">
+                            <i class="fa-solid fa-cloud-arrow-up mb-4 text-4xl text-brand transition group-hover:-translate-y-1"></i>
+                            <p class="font-black text-slate-700">Upload meter photo</p>
+                            <p class="mt-1 text-sm text-slate-500">JPG, PNG, or camera image</p>
+                        </div>
+                        <img id="imagePreview" class="hidden max-h-60 rounded-xl object-contain shadow-lg animate-pop" alt="Meter preview">
+                        <input id="meterImage" type="file" accept="image/*" class="hidden" onchange="previewImage(event)" required>
+                    </label>
+
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                        <label>
+                            <span class="mb-2 block text-sm font-bold text-slate-700">Previous Reading</span>
+                            <input id="prevReading" type="number" min="0" step="1" placeholder="1050" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-emerald-100" required>
+                            <span id="previousHint" class="mt-2 block text-xs font-semibold text-slate-500">First time: last bill ki old/previous reading likhein.</span>
+                        </label>
+                        <label>
+                            <span class="mb-2 block text-sm font-bold text-slate-700">Rate per Unit</span>
+                            <input id="unitRate" type="number" min="0" step="0.01" placeholder="7.50" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-emerald-100" required>
+                        </label>
+                    </div>
+
+                    <label>
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Detected / Current Reading</span>
+                        <input id="currentReading" type="number" min="0" step="1" placeholder="OCR will fill this, you can edit it" class="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-emerald-100">
+                    </label>
+
+                    <button id="ocrOnlyBtn" type="button" onclick="runOcrOnly()" class="rounded-xl border border-emerald-200 bg-white px-5 py-3 font-black text-brand shadow-sm transition hover:border-brand hover:bg-emerald-50 hover:-translate-y-0.5">
+                        <i class="fa-solid fa-eye mr-2"></i> Read Meter by OCR
+                    </button>
+
+                    <button id="analyzeBtn" type="submit" class="rounded-xl bg-brand px-5 py-3 font-black text-white shadow-xl shadow-emerald-200 transition hover:bg-brandDark hover:-translate-y-0.5">
+                        <i class="fa-solid fa-microchip mr-2"></i> Analyze and Calculate
+                    </button>
+                </form>
+            </div>
+
+            <div class="grid gap-6">
+                <div id="loader" class="glass-panel hidden rounded-3xl p-8 text-center">
+                    <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-brand">
+                        <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i>
+                    </div>
+                    <p class="font-black text-slate-700">Reading meter photo...</p>
+                    <p id="ocrStatus" class="mt-2 text-sm text-slate-500">OCR engine starting</p>
+                </div>
+
+                <div id="ocrTextBox" class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
+                    OCR text will appear here after scan.
+                </div>
+
+                <div id="resultSection" class="hidden animate-rise">
+                    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-black">Energy Dashboard</h3>
+                            <p class="text-sm text-slate-500">Latest bill calculation</p>
+                        </div>
+                        <button onclick="resetScan()" class="rounded-full bg-white px-4 py-2 text-sm font-bold text-brand shadow-sm transition hover:bg-emerald-50">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> Scan Again
+                        </button>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <article class="card-hover rounded-2xl border border-blue-100 bg-white p-5 shadow-md animate-rise delay-1">
+                            <i class="fa-solid fa-gauge-high mb-4 text-2xl text-sky"></i>
+                            <p class="text-sm font-bold text-slate-500">Current Meter Reading</p>
+                            <p class="mt-1 text-3xl font-black"><span id="resReading">0</span></p>
+                        </article>
+                        <article class="card-hover rounded-2xl border border-emerald-100 bg-white p-5 shadow-md animate-rise delay-2">
+                            <i class="fa-solid fa-battery-three-quarters mb-4 text-2xl text-brand"></i>
+                            <p class="text-sm font-bold text-slate-500">Kul Kharch Units</p>
+                            <p class="mt-1 text-3xl font-black"><span id="resTotalMeter">0</span></p>
+                        </article>
+                        <article class="card-hover rounded-2xl border border-amber-100 bg-white p-5 shadow-md animate-rise delay-3">
+                            <i class="fa-solid fa-plug-circle-bolt mb-4 text-2xl text-solar"></i>
+                            <p class="text-sm font-bold text-slate-500">Bill Units</p>
+                            <p class="mt-1 text-3xl font-black"><span id="resUnits">0</span></p>
+                        </article>
+                        <article class="card-hover rounded-2xl border border-red-100 bg-white p-5 shadow-md animate-rise" style="animation-delay: 0.32s">
+                            <i class="fa-solid fa-file-invoice-dollar mb-4 text-2xl text-red-500"></i>
+                            <p class="text-sm font-bold text-slate-500">Estimated Bill</p>
+                            <p class="mt-1 text-3xl font-black text-red-600">Rs. <span id="resBill">0</span></p>
+                        </article>
+                    </div>
+
+                </div>
+
+                <div class="glass-panel animate-rise delay-2 rounded-3xl p-6">
+                    <div class="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-xl font-black">Monthly Usage</h3>
+                            <p class="text-sm text-slate-500">Saved readings from this profile</p>
+                        </div>
+                        <button onclick="clearHistory()" class="rounded-full bg-red-50 px-3 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="mb-5 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                            <p class="text-xs font-black uppercase tracking-wider text-emerald-700">Total Bill Units</p>
+                            <p class="mt-1 text-2xl font-black text-ink"><span id="summaryTotalUnits">0</span></p>
+                        </div>
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                            <p class="text-xs font-black uppercase tracking-wider text-blue-700">Average Units</p>
+                            <p class="mt-1 text-2xl font-black text-ink"><span id="summaryAverageUnits">0</span></p>
+                        </div>
+                        <div class="rounded-2xl border border-red-100 bg-red-50 p-4">
+                            <p class="text-xs font-black uppercase tracking-wider text-red-700">Latest Bill</p>
+                            <p class="mt-1 text-2xl font-black text-ink">Rs. <span id="summaryLatestBill">0</span></p>
+                        </div>
+                    </div>
+                    <div class="relative h-80">
+                        <canvas id="usageChart"></canvas>
+                        <div id="chartEmptyState" class="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60 px-5 text-center text-sm font-semibold text-slate-500">
+                            Calculation save karte hi graph yahan dikhega.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+            <div class="glass-panel rounded-3xl p-6">
+                <div class="mb-5 flex items-center justify-between">
+                    <h3 class="text-xl font-black">Reading History</h3>
+                    <button onclick="exportHistory()" class="rounded-full bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700">
+                        <i class="fa-solid fa-download mr-1"></i> Export
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[680px] text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500">
+                                <th class="py-3 font-black">Date</th>
+                                <th class="py-3 font-black">Previous</th>
+                                <th class="py-3 font-black">Current</th>
+                                <th class="py-3 font-black">Units</th>
+                                <th class="py-3 font-black">Rate</th>
+                                <th class="py-3 font-black">Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <aside class="glass-panel rounded-3xl p-6">
+                <h3 class="text-xl font-black">Saving Tips</h3>
+                <div class="mt-5 space-y-4">
+                    <p class="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-slate-700"><i class="fa-solid fa-lightbulb mr-2 text-brand"></i>Use LED bulbs for lower monthly units.</p>
+                    <p class="rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-slate-700"><i class="fa-solid fa-snowflake mr-2 text-sky"></i>Keep AC at 24-26 C for balanced saving.</p>
+                    <p class="rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-slate-700"><i class="fa-solid fa-power-off mr-2 text-solar"></i>Switch off standby devices at night.</p>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const storage = {
+            users: 'vidyutUsers',
+            activeUser: 'vidyutActiveUser',
+            readings: 'vidyutReadings'
+        };
+
+        let activeUser = null;
+        let usageChart = null;
+        let lastImageFile = null;
+        let lastOcrCandidates = [];
+        let previousReadingTouched = false;
+        const apiBase = 'http://localhost:3000'; // Connect to Node.js backend
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const previousInput = document.getElementById('prevReading');
+            if (previousInput) {
+                previousInput.addEventListener('input', () => {
+                    previousReadingTouched = true;
+                    const hint = document.getElementById('previousHint');
+                    if (hint) hint.innerText = 'Previous reading manually set hai.';
+                });
+            }
+
+            const savedEmail = localStorage.getItem(storage.activeUser);
+            if (savedEmail) {
+                const user = getUsers().find(item => item.email === savedEmail);
+                if (user) openDashboard(user);
+            }
+            renderHistory();
+        });
+
+        function getUsers() {
+            return JSON.parse(localStorage.getItem(storage.users) || '[]');
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(storage.users, JSON.stringify(users));
+        }
+
+        function getAllReadings() {
+            return JSON.parse(localStorage.getItem(storage.readings) || '{}');
+        }
+
+        function getUserReadings() {
+            if (!activeUser) return [];
+            const allReadings = getAllReadings();
+            return allReadings[activeUser.email] || [];
+        }
+
+        function getLastReading() {
+            const readings = getUserReadings();
+            return readings.length ? readings[readings.length - 1] : null;
+        }
+
+        function suggestPreviousReading() {
+            const previousInput = document.getElementById('prevReading');
+            const hint = document.getElementById('previousHint');
+            if (!previousInput || !activeUser) return;
+            if (previousReadingTouched && previousInput.value !== '') return;
+
+            const lastReading = getLastReading();
+            if (lastReading) {
+                previousInput.value = lastReading.current;
+                if (hint) {
+                    hint.innerText = `Auto-filled from last saved current reading: ${lastReading.current}`;
+                }
+            } else {
+                previousInput.value = '';
+                if (hint) {
+                    hint.innerText = 'First time: last bill ki old/previous reading likhein.';
+                }
+            }
+        }
+
+        function saveUserReadings(readings) {
+            const allReadings = getAllReadings();
+            allReadings[activeUser.email] = readings;
+            localStorage.setItem(storage.readings, JSON.stringify(allReadings));
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+
+            const user = {
+                name: document.getElementById('userName').value.trim(),
+                email: document.getElementById('userEmail').value.trim().toLowerCase(),
+                phone: document.getElementById('userPhone').value.trim() || 'Not added',
+                meter: document.getElementById('meterNumber').value.trim(),
+                address: document.getElementById('userAddress').value.trim() || 'Not added'
+            };
+
+            const users = getUsers();
+            const existingIndex = users.findIndex(item => item.email === user.email);
+            if (existingIndex >= 0) users[existingIndex] = user;
+            else users.push(user);
+            saveUsers(users);
+            syncUserToBackend(user);
+
+            if (document.getElementById('rememberUser').checked) {
+                localStorage.setItem(storage.activeUser, user.email);
+            }
+
+            openDashboard(user);
+        }
+
+        function openDashboard(user) {
+            activeUser = user;
+            previousReadingTouched = false;
+            document.getElementById('displayUserName').innerText = user.name;
+            document.getElementById('displayMeter').innerText = user.meter;
+            document.getElementById('displayEmail').innerText = user.email;
+            document.getElementById('displayPhone').innerText = user.phone;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainAppSection').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            renderHistory();
+            suggestPreviousReading();
+        }
+
+        function logoutApp() {
+            activeUser = null;
+            localStorage.removeItem(storage.activeUser);
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('mainAppSection').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.querySelector('form').reset();
+            resetScan();
+        }
+
+        function previewImage(event) {
+            const input = event.target;
+            if (!input.files || !input.files[0]) return;
+
+            lastImageFile = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(readerEvent) {
+                document.getElementById('imagePreview').src = readerEvent.target.result;
+                document.getElementById('imagePreview').classList.remove('hidden');
+                document.getElementById('uploadPlaceholder').classList.add('hidden');
+                document.getElementById('currentReading').value = '';
+                lastOcrCandidates = [];
+                document.getElementById('ocrTextBox').innerText = 'Image ready. OCR chalane ke liye Read Meter by OCR dabayein.';
+            };
+            reader.readAsDataURL(lastImageFile);
+        }
+
+        function setCurrentReading(value) {
+            const currentInput = document.getElementById('currentReading');
+            currentInput.value = value;
+            currentInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        async function runOcrOnly() {
+            if (!lastImageFile) {
+                alert('Pehle meter photo upload karein.');
+                return null;
+            }
+
+            showLoader(true, 'Preparing image for OCR...');
+            const reading = await readMeterFromImage(lastImageFile);
+            showLoader(false);
+
+            if (reading !== null && reading > 0) {
+                setCurrentReading(reading);
+                return reading;
+            }
+
+            alert('OCR reading clear nahi mila. Current Reading box me meter reading manually type karein.');
+            return null;
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const prevReading = Number(document.getElementById('prevReading').value);
+            const rate = Number(document.getElementById('unitRate').value);
+            const currentReadingInput = document.getElementById('currentReading').value;
+            let currentReading = currentReadingInput !== '' ? Number(currentReadingInput) : null;
+
+            if (currentReading === null && lastImageFile) {
+                currentReading = await runOcrOnly();
+            }
+
+            if (currentReading === null || currentReading === 0) {
+                alert('OCR reading clear nahi mila. Current Reading box me meter reading type karke phir calculate karein.');
+                return;
+            }
+
+            const units = calculateUnits(prevReading, currentReading);
+            const bill = units * rate;
+            const record = {
+                date: new Date().toLocaleDateString('en-IN'),
+                previous: prevReading,
+                current: currentReading,
+                totalMeterUnits: currentReading,
+                units,
+                rate,
+                bill: Number(bill.toFixed(2))
+            };
+
+            const readings = getUserReadings();
+            readings.push(record);
+            saveUserReadings(readings);
+            saveReadingToBackend(record);
+            
+            const totalTrackedUnits = readings.reduce((sum, item) => sum + Number(item.units || 0), 0);
+            
+            showResult(record, totalTrackedUnits);
+            document.getElementById('ocrTextBox').innerText = 'Bill successfully calculated and saved!';
+            
+            renderHistory();
+        }
+
+        function calculateUnits(previousReading, currentReading) {
+            return Math.abs(Number(currentReading) - Number(previousReading));
+        }
+
+        async function readMeterFromImage(file) {
+            let worker = null;
+            try {
+                if (!window.Tesseract) {
+                    document.getElementById('ocrTextBox').innerText = 'Tesseract OCR library could not load. Enter current reading manually.';
+                    return null;
+                }
+
+                const preparedImages = await prepareImagesForOcr(file);
+                const allCandidates = [];
+                let combinedText = '';
+                const modes = [
+                    Tesseract.PSM?.SINGLE_LINE || '7',
+                    Tesseract.PSM?.SINGLE_BLOCK || '6',
+                    Tesseract.PSM?.SPARSE_TEXT || '11'
+                ];
+
+                worker = await Tesseract.createWorker('eng', 1, {
+                    logger: message => {
+                        if (message.status === 'recognizing text') {
+                            const percent = message.progress ? ` ${Math.round(message.progress * 100)}%` : '';
+                            showLoader(true, `Extracting reading...${percent}`);
+                        } else {
+                            showLoader(true, `Initializing AI OCR...`);
+                        }
+                    }
+                });
+                
+                await worker.setParameters({
+                    tessedit_char_whitelist: '0123456789.',
+                    preserve_interword_spaces: '1'
+                });
+
+                for (const image of preparedImages) {
+                    for (const psm of modes) {
+                        await worker.setParameters({ tessedit_pageseg_mode: psm });
+                        const result = await worker.recognize(image.source);
+                        const text = result.data.text || '';
+                        combinedText += `\n[${image.label} - PSM ${psm}]: ${text.trim()}`;
+
+                        const confidence = Number(result.data.confidence || 0);
+                        allCandidates.push(...extractReadingCandidates(text, image.label, psm, confidence));
+                    }
+                }
+
+                lastOcrCandidates = rankReadingCandidates(allCandidates);
+                const bestReading = lastOcrCandidates.length ? lastOcrCandidates[0].value : null;
+                renderOcrResult(bestReading, combinedText);
+
+                return bestReading;
+            } catch (error) {
+                console.error("OCR Error:", error);
+                document.getElementById('ocrTextBox').innerText = 'OCR failed. Enter current reading manually.';
+                return null;
+            } finally {
+                if (worker) await worker.terminate();
+            }
+        }
+
+        function loadImageElement(file) {
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                const objectUrl = URL.createObjectURL(file);
+                image.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(image);
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error('Image could not be loaded for OCR'));
+                };
+                image.src = objectUrl;
+            });
+        }
+
+        async function prepareImagesForOcr(file) {
+            const image = await loadImageElement(file);
+            const targetWidth = 1400;
+            const scale = Math.min(3, Math.max(1, targetWidth / image.width));
+            const fullWidth = Math.round(image.width * scale);
+            const fullHeight = Math.round(image.height * scale);
+            const centerCrop = {
+                x: image.width * 0.05,
+                y: image.height * 0.15,
+                width: image.width * 0.9,
+                height: image.height * 0.7
+            };
+            const displayCrop = {
+                x: image.width * 0.12,
+                y: image.height * 0.25,
+                width: image.width * 0.76,
+                height: image.height * 0.45
+            };
+
+            return [
+                { label: 'Display high contrast', source: createOcrCanvas(image, 1400, 700, 'threshold', displayCrop) },
+                { label: 'Display inverted', source: createOcrCanvas(image, 1400, 700, 'invertThreshold', displayCrop) },
+                { label: 'Display boosted', source: createOcrCanvas(image, 1400, 700, 'boost', displayCrop) },
+                { label: 'Center high contrast', source: createOcrCanvas(image, 1400, 900, 'threshold', centerCrop) },
+                { label: 'Center boosted', source: createOcrCanvas(image, 1400, 900, 'boost', centerCrop) },
+                { label: 'Full high contrast', source: createOcrCanvas(image, fullWidth, fullHeight, 'threshold') },
+                { label: 'Original', source: file }
+            ];
+        }
+
+        function createOcrCanvas(image, width, height, mode = 'boost', crop = null) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = width;
+            canvas.height = height;
+            
+            context.fillStyle = 'white';
+            context.fillRect(0, 0, width, height);
+            
+            if (crop) {
+                context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+            } else {
+                context.drawImage(image, 0, 0, width, height);
+            }
+
+            const imageData = context.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            for (let index = 0; index < data.length; index += 4) {
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                let gray = r * 0.299 + g * 0.587 + b * 0.114;
+                const contrast = Math.max(0, Math.min(255, (gray - 128) * 2.4 + 128));
+                let binarized = contrast;
+                if (mode === 'threshold') {
+                    binarized = contrast > 135 ? 255 : 0;
+                } else if (mode === 'invertThreshold') {
+                    binarized = contrast > 135 ? 0 : 255;
+                }
+                
+                data[index] = binarized;
+                data[index + 1] = binarized;
+                data[index + 2] = binarized;
+            }
+            context.putImageData(imageData, 0, 0);
+            return canvas;
+        }
+
+        function extractReadingCandidates(text, label = '', psm = '', confidence = 0) {
+            const normalizedText = text
+                .replace(/[Oo]/g, '0')
+                .replace(/[Il|]/g, '1')
+                .replace(/[S]/g, '5')
+                .replace(/[B]/g, '8')
+                .replace(/[Z]/g, '2')
+                .replace(/[G]/g, '6')
+                .replace(/[^\d.]/g, ' ');
+            const rawCandidates = [
+                ...(normalizedText.match(/\d+(?:\.\d+)?/g) || []),
+                ...extractJoinedDigitGroups(normalizedText)
+            ];
+            return rawCandidates
+                .flatMap(rawValue => {
+                    const cleanValue = rawValue.replace(/^\.+|\.+$/g, '');
+                    const digits = cleanValue.replace(/\D/g, '');
+                    if (!digits) return [];
+
+                    let values = [];
+                    if (cleanValue.includes('.')) {
+                        const [integerPart, decimalPart = ''] = cleanValue.split('.');
+                        if (integerPart.length >= 3) {
+                            values.push(Number(integerPart));
+                        } else if (digits.length >= 3) {
+                            values.push(Number(digits));
+                        }
+
+                        if (decimalPart.length >= 3) {
+                            values.push(Number(decimalPart));
+                        }
+                    } else {
+                        values.push(Number(digits));
+                    }
+
+                    if (digits.length > 5 && digits.startsWith('0')) values.push(Number(digits.replace(/^0+/, '')));
+
+                    return values.map(value => ({
+                        value: Math.round(value),
+                        digitLength: String(Math.round(value)).length,
+                        raw: rawValue,
+                        label,
+                        psm,
+                        confidence
+                    }));
+                })
+                .filter(item => Number.isFinite(item.value) && item.value >= 10 && item.value <= 9999999);
+        }
+
+        function extractJoinedDigitGroups(text) {
+            const groups = text.match(/(?:\b\d\b[\s.]+){2,}\b\d\b/g) || [];
+            return groups
+                .map(group => group.replace(/\D/g, ''))
+                .filter(value => value.length >= 3 && value.length <= 7);
+        }
+
+        function pickBestReading(candidates) {
+            const ranked = rankReadingCandidates(candidates);
+            return ranked.length ? ranked[0].value : null;
+        }
+
+        function rankReadingCandidates(candidates) {
+            if (!candidates.length) return [];
+
+            const prevReading = Number(document.getElementById('prevReading').value) || 0;
+            const seenCounts = candidates.reduce((counts, item) => {
+                counts[item.value] = (counts[item.value] || 0) + 1;
+                return counts;
+            }, {});
+            const likelyCandidates = prevReading
+                ? candidates.filter(item => Math.abs(item.value - prevReading) <= 50000)
+                : candidates;
+
+            const pool = likelyCandidates.length ? likelyCandidates : candidates;
+            const bestByValue = pool.reduce((map, candidate) => {
+                const score = scoreReadingCandidate(candidate, prevReading, seenCounts);
+                const existing = map.get(candidate.value);
+                if (!existing || score > existing.score) {
+                    map.set(candidate.value, { ...candidate, score, count: seenCounts[candidate.value] || 1 });
+                }
+                return map;
+            }, new Map());
+
+            return Array.from(bestByValue.values()).sort((a, b) => b.score - a.score).slice(0, 6);
+        }
+
+        function scoreReadingCandidate(candidate, prevReading, seenCounts = {}) {
+            let score = 0;
+            const value = candidate.value;
+            const digitLength = candidate.digitLength;
+
+            if (digitLength >= 4 && digitLength <= 7) score += 60;
+            else if (digitLength === 3) score += 20;
+            else score -= 35;
+
+            if (prevReading) {
+                const difference = Math.abs(value - prevReading);
+                if (difference <= 20000) score += 45;
+                if (difference <= 5000) score += 25;
+                score -= Math.min(difference / 250, 80);
+            } else {
+                score += Math.min(value / 1000, 35);
+            }
+
+            if (candidate.label.includes('Display')) score += 18;
+            if (candidate.label.includes('Center')) score += 8;
+            if (String(candidate.psm) === '7') score += 8;
+            score += Math.min((seenCounts[value] || 1) * 8, 40);
+            score += Math.min(candidate.confidence || 0, 95) / 8;
+
+            return score;
+        }
+
+        function renderOcrResult(bestReading, combinedText) {
+            const ocrBox = document.getElementById('ocrTextBox');
+            const topCandidates = lastOcrCandidates.slice(0, 5);
+            const buttons = topCandidates.map(candidate => `
+                <button type="button" onclick="setCurrentReading(${candidate.value})" class="mr-2 mt-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 hover:border-brand hover:bg-white">
+                    ${candidate.value}
+                </button>
+            `).join('');
+
+            ocrBox.innerHTML = `
+                <div class="font-black text-slate-700">Detected reading: ${bestReading || 'not clear'}</div>
+                <div class="mt-1 text-xs text-slate-500">Agar reading wrong ho to neeche candidate par click karein ya current reading manually type karein.</div>
+                <div>${buttons || '<span class="mt-2 block text-xs text-red-500">No readable number found.</span>'}</div>
+                <pre class="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-xs text-slate-500">${escapeHtml(combinedText.trim() || 'No text found by OCR.')}</pre>
+            `;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function showLoader(visible, statusText = 'OCR running') {
+            const loader = document.getElementById('loader');
+            document.getElementById('ocrStatus').innerText = statusText;
+            loader.classList.toggle('hidden', !visible);
+        }
+
+        function showResult(record, totalTrackedUnits) {
+            document.getElementById('resReading').innerText = record.current;
+            document.getElementById('resTotalMeter').innerText = totalTrackedUnits !== undefined ? totalTrackedUnits : record.current;
+            document.getElementById('resUnits').innerText = record.units;
+            document.getElementById('resBill').innerText = record.bill.toFixed(2);
+            document.getElementById('resultSection').classList.remove('hidden');
+        }
+
+        function resetScan() {
+            const form = document.getElementById('meterForm');
+            const previousInput = document.getElementById('prevReading');
+            const rateInput = document.getElementById('unitRate');
+            const previousValue = previousInput ? previousInput.value : '';
+            const rateValue = rateInput ? rateInput.value : '';
+            if (form) form.reset();
+            if (previousInput) previousInput.value = previousValue;
+            if (rateInput) rateInput.value = rateValue;
+            lastImageFile = null;
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('ocrTextBox').innerText = 'OCR text will appear here after scan.';
+            showLoader(false);
+            if (!previousValue) suggestPreviousReading();
+        }
+
+        function renderHistory() {
+            const table = document.getElementById('historyTable');
+            if (!table) return;
+
+            const readings = getUserReadings();
+            table.innerHTML = readings.length
+                ? readings.slice().reverse().map((item, index) => `
+                    <tr class="animate-rise" style="animation-delay: ${index * 0.05}s">
+                        <td class="py-3 font-semibold">${item.date}</td>
+                        <td class="py-3">${item.previous}</td>
+                        <td class="py-3">${item.current}</td>
+                        <td class="py-3 font-bold text-solar">${item.units}</td>
+                        <td class="py-3">Rs. ${Number(item.rate).toFixed(2)}</td>
+                        <td class="py-3 font-black text-red-600">Rs. ${Number(item.bill).toFixed(2)}</td>
+                    </tr>
+                `).join('')
+                : `<tr><td colspan="6" class="py-8 text-center text-slate-500">No readings saved yet.</td></tr>`;
+
+            renderChart(readings);
+            renderSummary(readings);
+        }
+
+        function renderSummary(readings) {
+            const totalUnits = readings.reduce((sum, item) => sum + Number(item.units || 0), 0);
+            const averageUnits = readings.length ? totalUnits / readings.length : 0;
+            const latestBill = readings.length ? Number(readings[readings.length - 1].bill || 0) : 0;
+
+            document.getElementById('summaryTotalUnits').innerText = totalUnits.toFixed(0);
+            document.getElementById('summaryAverageUnits').innerText = averageUnits.toFixed(1);
+            document.getElementById('summaryLatestBill').innerText = latestBill.toFixed(2);
+        }
+
+        function renderChart(readings) {
+            const canvas = document.getElementById('usageChart');
+            const emptyState = document.getElementById('chartEmptyState');
+            if (emptyState) {
+                emptyState.classList.toggle('hidden', readings.length > 0 && Boolean(window.Chart));
+                if (readings.length > 0 && !window.Chart) {
+                    emptyState.innerText = 'Chart.js load nahi hua. Internet/CDN check karein.';
+                } else if (!readings.length) {
+                    emptyState.innerText = 'Calculation save karte hi graph yahan dikhega.';
+                }
+            }
+            if (!readings.length && usageChart) {
+                usageChart.destroy();
+                usageChart = null;
+            }
+            if (!canvas || !window.Chart) return;
+
+            if (usageChart) usageChart.destroy();
+            const context = canvas.getContext('2d');
+            const unitsGradient = context.createLinearGradient(0, 0, 0, canvas.height || 320);
+            unitsGradient.addColorStop(0, 'rgba(16, 185, 129, 0.72)');
+            unitsGradient.addColorStop(1, 'rgba(16, 185, 129, 0.14)');
+
+            usageChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: readings.map((item, index) => item.date || `Bill ${index + 1}`),
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Bill Units',
+                            data: readings.map(item => item.units),
+                            borderColor: '#10b981',
+                            backgroundColor: unitsGradient,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: 'Bill Rs.',
+                            data: readings.map(item => item.bill),
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.14)',
+                            tension: 0.38,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 3,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            type: 'line',
+                            label: 'Meter Reading',
+                            data: readings.map(item => item.totalMeterUnits ?? item.current),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                            tension: 0.28,
+                            pointRadius: 3,
+                            borderDash: [6, 5],
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 8,
+                                padding: 18,
+                                font: { weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#172033',
+                            padding: 12,
+                            cornerRadius: 10,
+                            titleFont: { weight: 'bold' },
+                            callbacks: {
+                                label: context => {
+                                    const value = Number(context.raw || 0);
+                                    if (context.dataset.label === 'Bill Rs.') return ` Bill: Rs. ${value.toFixed(2)}`;
+                                    return ` ${context.dataset.label}: ${value}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { weight: 'bold' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Bill Units' },
+                            grid: { color: 'rgba(148, 163, 184, 0.18)' }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: { display: true, text: 'Bill Rs.' },
+                            grid: { drawOnChartArea: false }
+                        },
+                        y2: {
+                            beginAtZero: true,
+                            display: false,
+                            position: 'right',
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function clearHistory() {
+            if (!activeUser) return;
+            if (!confirm('Clear all saved readings for this user?')) return;
+            saveUserReadings([]);
+            clearBackendHistory();
+            renderHistory();
+            document.getElementById('resultSection').classList.add('hidden');
+        }
+
+        function exportHistory() {
+            const readings = getUserReadings();
+            if (!readings.length) {
+                alert('No history available to export.');
+                return;
+            }
+
+            const header = 'Date,Previous,Current,Units,Rate,Bill\n';
+            const rows = readings.map(item => `${item.date},${item.previous},${item.current},${item.units},${item.rate},${item.bill}`).join('\n');
+            const blob = new Blob([header + rows], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'vidyut-drishti-history.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('brightness-95');
+            document.body.classList.toggle('contrast-125');
+        }
+
+        async function syncUserToBackend(user) {
+            if (!apiBase) return;
+
+            try {
+                await fetch(`${apiBase}/api/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+            } catch {
+                console.log('Backend user sync skipped.');
+            }
+        }
+
+        async function saveReadingToBackend(record) {
+            if (!apiBase || !activeUser) return;
+
+            try {
+                await fetch(`${apiBase}/api/readings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: activeUser.email, record })
+                });
+            } catch {
+                console.log('Backend reading sync skipped.');
+            }
+        }
+
+        async function clearBackendHistory() {
+            if (!apiBase || !activeUser) return;
+
+            try {
+                await fetch(`${apiBase}/api/readings?email=${encodeURIComponent(activeUser.email)}`, {
+                    method: 'DELETE'
+                });
+            } catch {
+                console.log('Backend clear skipped.');
+            }
+        }
+    </script>
+</body>
+</html>

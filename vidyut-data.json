@@ -1,0 +1,69 @@
+{
+  "users": [
+    {
+      "name": "Sachin",
+      "email": "vishwakarmasachin006@gmail.com",
+      "phone": "08837589263",
+      "meter": "MTR-2026-04",
+      "address": "GURMAIL NAGAR"
+    },
+    {
+      "name": "priyanshu",
+      "email": "avinsh@123",
+      "phone": "78955204554",
+      "meter": "245618",
+      "address": "GURMAIL NAGAR"
+    },
+    {
+      "name": "priyanshu",
+      "email": "avinsh@124",
+      "phone": "789552045504",
+      "meter": "24561845",
+      "address": "GURMAIL NAGAR"
+    }
+  ],
+  "readings": {
+    "vishwakarmasachin006@gmail.com": [
+      {
+        "date": "13/5/2026",
+        "previous": 24565,
+        "current": 24542,
+        "totalMeterUnits": 24542,
+        "units": 23,
+        "rate": 5,
+        "bill": 115
+      },
+      {
+        "date": "13/5/2026",
+        "previous": 24569,
+        "current": 24545,
+        "totalMeterUnits": 24545,
+        "units": 24,
+        "rate": 5,
+        "bill": 120
+      }
+    ],
+    "avinsh@123": [
+      {
+        "date": "6/5/2026",
+        "previous": 24545,
+        "current": 24515,
+        "totalMeterUnits": 24515,
+        "units": 30,
+        "rate": 6,
+        "bill": 180
+      }
+    ],
+    "avinsh@124": [
+      {
+        "date": "6/5/2026",
+        "previous": 24545,
+        "current": 24515,
+        "totalMeterUnits": 24515,
+        "units": 30,
+        "rate": 6,
+        "bill": 180
+      }
+    ]
+  }
+}
